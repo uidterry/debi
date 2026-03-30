@@ -331,7 +331,7 @@ ensure_authorized_key "root" "/root"
 for _dir in "${USER_HOME}/.local/bin" "${USER_HOME}/bin"; do
     prepend_path_in_environment "$_dir"
 done
-install -d -o "$USERNAME" -g "$USERNAME" "$USER_HOME/.local/bin" "$USER_HOME/bin"
+install -d -o "$USERNAME" -g "$USERNAME" "$USER_HOME/.local" "$USER_HOME/.local/bin" "$USER_HOME/bin"
 
 STEP=$((STEP + 1))
 echo "[$STEP/$TOTAL_STEPS] 安装 Docker..."
@@ -362,7 +362,7 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
     DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 
     echo "  配置 $USERNAME 的 Node.js 用户环境..."
-    install -d -o "$USERNAME" -g "$USERNAME" "$USER_HOME/.npm-global/bin" "$USER_HOME/.npm-global/lib"
+    install -d -o "$USERNAME" -g "$USERNAME" "$USER_HOME/.npm-global" "$USER_HOME/.npm-global/bin" "$USER_HOME/.npm-global/lib"
 
     su - "$USERNAME" -c 'npm config set --location=user prefix "$HOME/.npm-global"'
 
@@ -430,6 +430,7 @@ check "root authorized_keys 含公钥" grep -qxF "$SSH_PUBLIC_KEY" /root/.ssh/au
 echo "[PATH (/etc/environment)]"
 check "含 .local/bin" grep -q "${USER_HOME}/.local/bin" /etc/environment
 check "含 ~/bin" grep -q "${USER_HOME}/bin" /etc/environment
+check ".local 目录归属正确" test "$(stat -c %U:%G "$USER_HOME/.local" 2>/dev/null)" = "$USERNAME:$USERNAME"
 check ".local/bin 目录存在" test -d "$USER_HOME/.local/bin"
 check "~/bin 目录存在" test -d "$USER_HOME/bin"
 
@@ -445,6 +446,7 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
     check "node 命令可用: $(node --version 2>/dev/null)" command -v node
     check "npm prefix 已配置" bash -c "su - '$USERNAME' -c 'npm config get prefix 2>/dev/null' | grep -q '.npm-global'"
     check ".npm-global/bin 在 PATH 中" grep -q 'npm-global/bin' /etc/environment
+    check ".npm-global 目录归属正确" test "$(stat -c %U:%G "$USER_HOME/.npm-global" 2>/dev/null)" = "$USERNAME:$USERNAME"
     check ".npm-global/bin 目录存在" test -d "$USER_HOME/.npm-global/bin"
     check ".profile 含 .npm-global/bin" grep -qF "$USER_HOME/.npm-global/bin" "$USER_HOME/.profile"
     if command -v corepack >/dev/null 2>&1; then
