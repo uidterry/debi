@@ -208,6 +208,22 @@ ensure_authorized_key() {
     chown -R "$user_name:$user_name" "$home_dir/.ssh"
 }
 
+prepend_path_in_environment() {
+    local dir="$1"
+    local env_file="/etc/environment"
+
+    if grep -qF "$dir" "$env_file" 2>/dev/null; then
+        return 0
+    fi
+
+    if grep -q '^PATH="' "$env_file" 2>/dev/null; then
+        sed -i "s|^PATH=\"|PATH=\"${dir}:|" "$env_file"
+        return 0
+    fi
+
+    printf 'PATH="%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\n' "$dir" >> "$env_file"
+}
+
 configure_docker_data_root() {
     local backup_dir=""
 
@@ -293,11 +309,9 @@ USER_HOME="$(getent passwd "$USERNAME" | cut -d: -f6)"
 ensure_authorized_key "$USERNAME" "$USER_HOME"
 ensure_authorized_key "root" "/root"
 
-# 将用户私有 bin 目录加入 PATH（通过 /etc/environment，PAM 层加载，覆盖所有场景）
+# 将用户私有 bin 目录加入 PATH（通过 /etc/environment，覆盖交互式和大部分 PAM 加载场景）
 for _dir in "${USER_HOME}/.local/bin" "${USER_HOME}/bin"; do
-    if ! grep -q "${_dir}" /etc/environment; then
-        sed -i "s|^PATH=\"|PATH=\"${_dir}:|" /etc/environment
-    fi
+    prepend_path_in_environment "$_dir"
 done
 install -d -o "$USERNAME" -g "$USERNAME" "$USER_HOME/.local/bin" "$USER_HOME/bin"
 
@@ -334,10 +348,8 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
 
     su - "$USERNAME" -c 'npm config set --location=user prefix "$HOME/.npm-global"'
 
-    # 将 npm global prefix 的 bin 目录加入 PATH（通过 /etc/environment，PAM 层加载，覆盖所有场景）
-    if ! grep -q 'npm-global/bin' /etc/environment; then
-        sed -i "s|^PATH=\"|PATH=\"${USER_HOME}/.npm-global/bin:|" /etc/environment
-    fi
+    # 将 npm global prefix 的 bin 目录加入 PATH（通过 /etc/environment，覆盖交互式和大部分 PAM 加载场景）
+    prepend_path_in_environment "$USER_HOME/.npm-global/bin"
 
     if command -v corepack >/dev/null 2>&1; then
         su - "$USERNAME" -c 'corepack enable --install-directory "$HOME/.npm-global/bin"' || echo "  警告: corepack 启用失败，可稍后手动执行"

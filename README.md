@@ -40,6 +40,16 @@ curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/reinstall.sh | e
   GITHUB_PROXY='https://your-proxy.example.com' \
   bash
 
+# 显式透传 debi 可选参数（示例：启用 firmware）
+curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/reinstall.sh | env \
+  ROOT_PASSWORD='xxx' \
+  bash -s -- --firmware
+
+# 显式透传 debi 可选参数（示例：关闭 apt source 仓库）
+curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/reinstall.sh | env \
+  ROOT_PASSWORD='xxx' \
+  bash -s -- --no-apt-src
+
 # 交互模式
 bash <(curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/reinstall.sh) -i
 ```
@@ -92,6 +102,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/init.sh) 
 | TIMEZONE | 否 | Asia/Shanghai | 系统时区，格式为 [tz 数据库名称](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)，如 `Asia/Tokyo`、`UTC` |
 | GITHUB_PROXY | 否 | -（直连） | GitHub 反代地址，仅 `REGION=china` 时生效。格式：`https://your-proxy.com`，脚本会拼接为 `代理地址/原始URL` |
 
+`reinstall.sh` 默认不再强制传 `--firmware` 和 `--no-apt-src` 给上游 debi，会保留上游默认行为。如需启用这两个参数，请在执行脚本时显式透传，例如 `bash -s -- --firmware` 或 `bash -s -- --no-apt-src`。
+
 ### init.sh
 
 | 环境变量 | 必填 | 默认值 | 说明 |
@@ -116,7 +128,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/init.sh) 
 | 软件源 | 海外 deb.debian.org（`--cloudflare` 预设） / 国内中科大（`--ustc` 预设） |
 | 时区 | 默认 Asia/Shanghai（可自定义） |
 | NTP | 海外 time.cloudflare.com / 国内 ntp.aliyun.com |
-| 非自由固件 | 包含 non-free-firmware |
+| 非自由固件 / apt source | 默认跟随上游 debi；如需覆盖，可显式透传 `--firmware` 或 `--no-apt-src` |
 | 预装软件 | 见下方清单 |
 
 ### init.sh 做了什么

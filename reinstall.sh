@@ -6,6 +6,7 @@
 # 方式一：环境变量传入（默认）
 #   curl -fsSL URL | env ROOT_PASSWORD='xxx' bash
 #   curl -fsSL URL | env ROOT_PASSWORD='xxx' REGION=overseas SSH_PORT=2222 TIMEZONE=Asia/Shanghai bash
+#   curl -fsSL URL | env ROOT_PASSWORD='xxx' bash -s -- --firmware
 #
 # 方式二：交互输入（加 -i 参数）
 #   bash <(curl -fsSL URL) -i
@@ -21,11 +22,25 @@
 set -euo pipefail
 
 INTERACTIVE=false
-while getopts "i" opt; do
-    case "$opt" in
-        i) INTERACTIVE=true ;;
-        *) echo "用法: $0 [-i]"; exit 1 ;;
+OPTIONAL_DEBI_ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -i)
+            INTERACTIVE=true
+            ;;
+        --firmware|--no-apt-src)
+            OPTIONAL_DEBI_ARGS+=("$1")
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "用法: $0 [-i] [--firmware] [--no-apt-src]"
+            exit 1
+            ;;
     esac
+    shift
 done
 
 DEBIAN_VERSION="${DEBIAN_VERSION:-13}"
@@ -240,10 +255,10 @@ DEBI_ARGS=(
     --ssh-port "$SSH_PORT"
     --timezone "$TIMEZONE"
     --ntp "$NTP_SERVER"
-    --no-apt-src
-    --firmware
     --install 'ca-certificates sudo vim nano wget curl git unzip xz-utils python3 python3-pip jq vnstat htop iftop ncdu tmux mtr-tiny iputils-ping dnsutils fail2ban rsync less rsyslog logrotate gnupg locales iproute2 bash-completion net-tools dbus'
 )
+
+DEBI_ARGS+=("${OPTIONAL_DEBI_ARGS[@]}")
 
 if has_tty; then
     $SUDO bash "$WORK_DIR/debi.sh" "${DEBI_ARGS[@]}" < /dev/tty
