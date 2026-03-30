@@ -427,7 +427,7 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
     check ".npm-global/bin 在 PATH 中" grep -q 'npm-global/bin' /etc/environment
     check ".npm-global/bin 目录存在" test -d "$USER_HOME/.npm-global/bin"
     if command -v corepack >/dev/null 2>&1; then
-        check "corepack 已启用" test -x "$USER_HOME/.npm-global/bin/corepack"
+        check "corepack shim 已生成" bash -c "test -x '$USER_HOME/.npm-global/bin/pnpm' || test -x '$USER_HOME/.npm-global/bin/yarn' || test -x '$USER_HOME/.npm-global/bin/yarnpkg'"
     fi
 fi
 
