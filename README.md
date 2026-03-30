@@ -138,7 +138,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/init.sh) 
 | hostname 修复 | 防止 sudo 报 "unable to resolve host" |
 | 创建普通用户 | sudo 免密码，设置密码，注入 SSH 公钥 |
 | 安装 Docker | DEB822 格式，可自定义数据目录 |
-| 安装 Node.js（可选） | 通过 `INSTALL_NODEJS=false` 跳过，版本通过 `NODEJS_VERSION` 自定义。同时为普通用户配置 npm prefix（`~/.npm-global`）、corepack（如可用），并将 `~/.npm-global/bin`、`~/.local/bin`、`~/bin` 写入 `/etc/environment` 的 PATH |
+| 安装 Node.js（可选） | 通过 `INSTALL_NODEJS=false` 跳过，版本通过 `NODEJS_VERSION` 自定义。同时为普通用户配置 npm prefix（`~/.npm-global`）、corepack（如可用），将 `~/.local/bin`、`~/bin` 写入 `/etc/environment`，并通过 `/etc/environment` + `~/.profile` 让 `~/.npm-global/bin` 在登录后可用 |
 | SSH 安全策略 | root 仅密钥，普通用户密码+密钥 |
 | 清理 | apt 缓存和 bash 历史 |
 
@@ -174,7 +174,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/uidterry/debi/main/init.sh) 
 | 配置项 | 说明 |
 |--------|------|
 | npm prefix | 设为 `~/.npm-global`，普通用户 `npm i -g` 无需 sudo |
-| PATH | 将 `~/.npm-global/bin`、`~/.local/bin`、`~/bin` 前置写入 `/etc/environment` 的 PATH，覆盖交互式和大部分 PAM 加载场景 |
+| PATH | 将 `~/.local/bin`、`~/bin` 写入 `/etc/environment`；`~/.npm-global/bin` 同时写入 `/etc/environment` 并补充到 `~/.profile`，保证普通用户 SSH 登录后可直接使用 `pnpm`/`yarn` |
 | corepack | 如可用，启用并将 shim（pnpm/yarn）安装到 `~/.npm-global/bin` |
 
 普通用户 SSH 登录后即可直接使用 `npm`、`pnpm`、`yarn`，无需额外操作。

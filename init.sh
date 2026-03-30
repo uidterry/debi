@@ -224,6 +224,24 @@ prepend_path_in_environment() {
     printf 'PATH="%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\n' "$dir" >> "$env_file"
 }
 
+ensure_profile_path() {
+    local profile_file="$1"
+    local path_dir="$2"
+
+    touch "$profile_file"
+
+    if grep -qF "$path_dir" "$profile_file" 2>/dev/null; then
+        return 0
+    fi
+
+    cat >> "$profile_file" <<EOF_PROFILE
+
+if ! printf '%s' ":\$PATH:" | grep -q ":$path_dir:"; then
+    export PATH="$path_dir:\$PATH"
+fi
+EOF_PROFILE
+}
+
 configure_docker_data_root() {
     local backup_dir=""
 
@@ -348,8 +366,10 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
 
     su - "$USERNAME" -c 'npm config set --location=user prefix "$HOME/.npm-global"'
 
-    # 将 npm global prefix 的 bin 目录加入 PATH（通过 /etc/environment，覆盖交互式和大部分 PAM 加载场景）
+    # 将 npm global prefix 的 bin 目录加入 PATH（/etc/environment 覆盖部分会话，~/.profile 保证登录 shell）
     prepend_path_in_environment "$USER_HOME/.npm-global/bin"
+    ensure_profile_path "$USER_HOME/.profile" "$USER_HOME/.npm-global/bin"
+    chown "$USERNAME:$USERNAME" "$USER_HOME/.profile"
 
     if command -v corepack >/dev/null 2>&1; then
         su - "$USERNAME" -c 'corepack enable --install-directory "$HOME/.npm-global/bin"' || echo "  警告: corepack 启用失败，可稍后手动执行"
@@ -426,8 +446,10 @@ if [ "$INSTALL_NODEJS" = "true" ]; then
     check "npm prefix 已配置" bash -c "su - '$USERNAME' -c 'npm config get prefix 2>/dev/null' | grep -q '.npm-global'"
     check ".npm-global/bin 在 PATH 中" grep -q 'npm-global/bin' /etc/environment
     check ".npm-global/bin 目录存在" test -d "$USER_HOME/.npm-global/bin"
+    check ".profile 含 .npm-global/bin" grep -qF "$USER_HOME/.npm-global/bin" "$USER_HOME/.profile"
     if command -v corepack >/dev/null 2>&1; then
         check "corepack shim 已生成" bash -c "test -x '$USER_HOME/.npm-global/bin/pnpm' || test -x '$USER_HOME/.npm-global/bin/yarn' || test -x '$USER_HOME/.npm-global/bin/yarnpkg'"
+        check "登录 shell 可解析 pnpm/yarn shim" bash -c "su - '$USERNAME' -c 'command -v pnpm || command -v yarn || command -v yarnpkg'"
     fi
 fi
 
